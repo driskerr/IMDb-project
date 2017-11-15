@@ -94,13 +94,12 @@ for m in movies:
         df_initial = df_initial[['ID', 'Title', 'Year', 'MPAA','Rating', 'Votes']]        
         df_both = pd.concat([df_initial, demo_df], axis=1)
         
-        df = df.append(df_both)
+        df = df.append(df_both, ignore_index=True)
     
-df = df.reset_index()    
+df = df.reset_index(drop=True)    
 df['Year']=df['Year'].astype(int)
 df['Votes']=df['Votes'].astype(int)
 df = df.sort_values(by=['Rating'], ascending=False)
-df.reset_index
 
 run_time=time.time() - start_time
 print("--- {} seconds ---".format(run_time))
