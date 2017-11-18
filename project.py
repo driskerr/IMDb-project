@@ -116,12 +116,14 @@ U.S. Population Statistics
 Percent Composition of the >18 population (249,485,228 people)
 According to U.S. Census Bureau 2016 Population Estimates
 
+DEMO            COUNT           PERCENT
 MALE 18-29      27,450,678      0.110029272	
 MALE 30-44      31,121,027      0.124740961	
 MALE 45+        62,898,003      0.252111131
 FEMALE 18-29    26,284,017      0.105352999	
 FEMALE 30-44    31,135,488      0.124798924
 FEMALE 45+      70,596,015      0.282966713
+TOTAL           249,485,228     1.000000000
 """
 
 df['weight_males aged 18 29']       = 0.110029272/ df['percent_males aged 18 29_votes']
@@ -131,15 +133,15 @@ df['weight_females aged 18 29']     = 0.105352999/ df['percent_females aged 18 2
 df['weight_females aged 30 44']     = 0.124798924/ df['percent_females aged 30 44_votes']
 df['weight_females aged 45 plus']   = 0.282966713/ df['percent_females aged 45 plus_votes']
 
-rating_cols = [col for col in df.columns if '_rating' in col]
-weight_cols = [col for col in df.columns if 'weight_' in col]
-
-
+df['unweighted rating'] = (df['males aged 18 29_rating']*df['percent_males aged 18 29_votes']) + (df['males aged 30 44_rating']*df['percent_males aged 30 44_votes']) + (df['males aged 45 plus_rating']*df['percent_males aged 45 plus_votes']) + (df['females aged 18 29_rating']*df['percent_females aged 18 29_votes']) + (df['females aged 30 44_rating']*df['percent_females aged 30 44_votes']) + (df['females aged 45 plus_rating']*df['percent_females aged 45 plus_votes'])
 df['weighted rating'] = (df['males aged 18 29_rating']*df['weight_males aged 18 29']*df['percent_males aged 18 29_votes']) + (df['males aged 30 44_rating']*df['weight_males aged 30 44']*df['percent_males aged 30 44_votes']) + (df['males aged 45 plus_rating']*df['weight_males aged 45 plus']*df['percent_males aged 45 plus_votes']) + (df['females aged 18 29_rating']*df['weight_females aged 18 29']*df['percent_females aged 18 29_votes']) + (df['females aged 30 44_rating']*df['weight_females aged 30 44']*df['percent_females aged 30 44_votes']) + (df['females aged 45 plus_rating']*df['weight_females aged 45 plus']*df['percent_females aged 45 plus_votes'])
-df['difference'] = df['new rating']-df['Rating']
+
+df['difference'] = df['new rating']-df['unweighted rating']
 df['abs_difference']= abs(df['difference'])
-df = df.sort_values(by='abs_difference', ascending=False)
-df[['Title', 'Year', 'Votes','Rating','weighted rating', 'difference']]
+
+#df = df.sort_values(by='abs_difference', ascending=False)
+df = df.sort_values(by='difference', ascending=False)
+df[['Title', 'Year', 'Votes','Rating','unweighted rating', 'weighted rating', 'difference']]
 
 run_time=time.time() - start_time
 print("--- {} seconds ---".format(run_time))
