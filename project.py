@@ -5,12 +5,20 @@ Created on Mon Nov 13 14:32:04 2017
 @author: kerrydriscoll
 """
 
+"""
+Install IMDBPy with the following code in terminal
+(to ensure you have the most current version):
+
+pip3 install git+https://github.com/alberanid/imdbpy
+
+"""
+
 import time
 import pandas as pd
-import numpy as np
 import re
 import random
 import imdb
+import sys
 from imdb import IMDb
 
 
@@ -38,14 +46,15 @@ df=pd.DataFrame()
 df_initial = pd.DataFrame(columns=['ID', 'Title', 'Year', 'MPAA', 'Rating', 'Votes'])
 
 i =  IMDb(accessSystem='http')
-"""
+#"""
+#movies = ['0780504']
+movies = ['0053494','0053494','4925292', '0780504', '0377092', '0268126', '0128853', '0050212', '0105435', '5013056', '0074119', '0064253', '0061811', '0112697', '0405094', '1255953', '0046268', '0029593']
+#"""
 movies = []
 for _ in range(100):
     randID = str(random.randint(0, 780505)).zfill(7)
     movies.append(randID)
-"""
-#movies = ['0780504']
-movies = ['0053494','0053494','4925292', '0780504', '0377092', '0268126', '0128853', '0050212', '0105435', '5013056', '0074119', '0064253', '0061811', '0112697', '0405094', '1255953', '0046268', '0029593']
+#"""
 
 for m in movies:
     movie = i.get_movie(m)
@@ -95,6 +104,12 @@ for m in movies:
         df_both = pd.concat([df_initial, demo_df], axis=1)
         
         df = df.append(df_both, ignore_index=True)
+        
+if df.empty==True:
+    print("No qualified movies in randomly generated list")
+    sys.exit()
+else:
+    pass
     
 df = df.reset_index(drop=True)    
 df['Year']=df['Year'].astype(int)
@@ -117,12 +132,14 @@ Percent Composition of the >18 population (249,485,228 people)
 According to U.S. Census Bureau 2016 Population Estimates
 
 DEMO            COUNT           PERCENT
+--------------------------------------------
 MALE 18-29      27,450,678      0.110029272	
 MALE 30-44      31,121,027      0.124740961	
 MALE 45+        62,898,003      0.252111131
 FEMALE 18-29    26,284,017      0.105352999	
 FEMALE 30-44    31,135,488      0.124798924
 FEMALE 45+      70,596,015      0.282966713
+--------------------------------------------
 TOTAL           249,485,228     1.000000000
 """
 
@@ -136,12 +153,12 @@ df['weight_females aged 45 plus']   = 0.282966713/ df['percent_females aged 45 p
 df['unweighted rating'] = (df['males aged 18 29_rating']*df['percent_males aged 18 29_votes']) + (df['males aged 30 44_rating']*df['percent_males aged 30 44_votes']) + (df['males aged 45 plus_rating']*df['percent_males aged 45 plus_votes']) + (df['females aged 18 29_rating']*df['percent_females aged 18 29_votes']) + (df['females aged 30 44_rating']*df['percent_females aged 30 44_votes']) + (df['females aged 45 plus_rating']*df['percent_females aged 45 plus_votes'])
 df['weighted rating'] = (df['males aged 18 29_rating']*df['weight_males aged 18 29']*df['percent_males aged 18 29_votes']) + (df['males aged 30 44_rating']*df['weight_males aged 30 44']*df['percent_males aged 30 44_votes']) + (df['males aged 45 plus_rating']*df['weight_males aged 45 plus']*df['percent_males aged 45 plus_votes']) + (df['females aged 18 29_rating']*df['weight_females aged 18 29']*df['percent_females aged 18 29_votes']) + (df['females aged 30 44_rating']*df['weight_females aged 30 44']*df['percent_females aged 30 44_votes']) + (df['females aged 45 plus_rating']*df['weight_females aged 45 plus']*df['percent_females aged 45 plus_votes'])
 
-df['difference'] = df['new rating']-df['unweighted rating']
+df['difference'] = df['weighted rating']-df['unweighted rating']
 df['abs_difference']= abs(df['difference'])
 
 #df = df.sort_values(by='abs_difference', ascending=False)
 df = df.sort_values(by='difference', ascending=False)
-df[['Title', 'Year', 'Votes','Rating','unweighted rating', 'weighted rating', 'difference']]
+print(df[['Title', 'Year', 'Votes','Rating','unweighted rating', 'weighted rating', 'difference']])
 
 run_time=time.time() - start_time
 print("--- {} seconds ---".format(run_time))
