@@ -340,18 +340,18 @@ df['unweighted rank']=df['unweighted rating'].rank(ascending=0).astype(int)
 df['weighted rank']=df['weighted rating'].rank(ascending=0).astype(int)
 df['rank difference'] = df['unweighted rank']-df['weighted rank']
 
-df = df.sort_values(by='weighted rank', ascending=True)
-print(df[['Title', 'Year','Language', 'Votes','Rating','unweighted rating', 'weighted rating', 'difference', 'unweighted rank', 'weighted rank', 'rank difference']])
-
-pd.set_option('display.max_rows', 500)
-pd.set_option('display.width', 1000)
-print(df[['Title', 'unweighted rank', 'weighted rank', 'rank difference']])
-
-pd.reset_option('all')
 df = df.sort_values(by='rank difference', ascending=False)
 print(df.head(10)[['Title', 'Year', 'Language','Votes','Rating','unweighted rating', 'weighted rating', 'difference', 'unweighted rank', 'weighted rank', 'rank difference']])
 print(df.tail(10)[['Title', 'Year', 'Language', 'Votes','Rating','unweighted rating', 'weighted rating', 'difference', 'unweighted rank', 'weighted rank', 'rank difference']])
 
+df = df.sort_values(by='weighted rank', ascending=True)
+print(df[['Title', 'Year','Language', 'Votes','Rating','unweighted rating', 'weighted rating', 'difference', 'unweighted rank', 'weighted rank', 'rank difference']])
+
+pd.set_option('display.max_rows', 250)
+pd.set_option('display.width', 1000)
+print(df[['Title', 'unweighted rank', 'weighted rank', 'rank difference']])
+
+pd.reset_option('all')
 
 """
 Measure Runtime to Evaluate Code Performance
