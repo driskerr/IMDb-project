@@ -19,13 +19,14 @@ Import Libraries
 
 import time
 import pandas as pd
+from pandas import ExcelWriter
 import re
 import random
 import imdb
 import sys
-from imdb import IMDb
+from imdb import IMDb, IMDbError
 
-pd.reset_option('all')
+#pd.reset_option('all')
 
 
 """
@@ -43,7 +44,7 @@ BUILD DEMOGRAPHIC LABELS
 Generate framework of demographics to reweigh ratings by later
 
 This code does the following:
-1. Access the demoraphics page of a the movie "Drive"
+1. Access the demoraphics page of a the movie "Silence of the Lambs"
 2. Pulls the demographics categories (['male', 'female', 'aged 18 29', ...])
 3. Removes IMDb-specific demographic categories that are not of interest 
    (and the redundant 'imdb users' which is the same as the 'Rating' we'll 
@@ -94,12 +95,14 @@ i =  IMDb(accessSystem='http')
 #"""
 movies = []
 #movies = ['0780504']
-#movies = ['0053494','0053494','4925292', '0780504', '0377092', '0268126', '0128853', '0050212', '0105435', '5013056', '0074119', '0064253', '0061811', '0112697', '0405094', '1255953', '0046268', '0029593', '0757180']
+#movies = ['0053494','0053494','0757180','4925292', '0780504', '0377092', '0268126', '0128853', '0050212', '0105435', '5013056', '0074119', '0064253', '0061811', '0112697', '0405094', '1255953', '0046268', '0029593']
 """
-for _ in range(1000):
-    randID = str(random.randint(0, 780505)).zfill(7)
+for _ in range(5521897):
+    #randID = str(random.randint(0, 7221897)).zfill(7)
+    randID = str(_).zfill(7)
     movies.append(randID)
 """
+
 for id in i.get_top250_movies():
     movies.append(i.get_imdbID(id))
 
@@ -125,7 +128,11 @@ BUILD THE DATAFRAME
 """
 
 for m in movies:
-    movie = i.get_movie(m)
+    try:
+        movie = i.get_movie(m)
+    except IMDbError as err:
+      print(err)
+      
     if str(movie)=='':
         continue
     
@@ -224,6 +231,7 @@ who voted on the film
 """
 df['known total votes >18'] = df[demo_votes_cols].sum(axis=1)
 df['Perc Votes studied']=df['known total votes >18']/df['Votes']
+df['Perc Votes U.S.']=df['us users_votes']/(df['us users_votes']+df['non us users_votes'])
 
 """
 CALCULATE DEMPGRAHIC COMPOSITION
@@ -352,6 +360,10 @@ pd.set_option('display.width', 1000)
 print(df[['Title', 'unweighted rank', 'weighted rank', 'rank difference']])
 
 pd.reset_option('all')
+
+writer = ExcelWriter('/Users/kerrydriscoll/Documents/imdb project/NewIMDb.xlsx')
+df.to_excel(writer)
+writer.save()
 
 """
 Measure Runtime to Evaluate Code Performance
