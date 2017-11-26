@@ -26,7 +26,7 @@ else:
     
 include_language = input("Limit search by Language? (Y/N) \n")
 if include_language.upper() == "Y":
-    criteria_language = "&languages="+input("Language Spoken: \n English=en \n French=fr \n German=de \n Chinese=zh \n Hindi=hi \n Greek=el \n Italian=it \n Arabic=ar \n Japanese=ja \n Korean=ko \n Persian=fa \n Panjabi=pt \n Russian=ru \n Spanish=es \n Swedish=sv \n Turkish=tr \n ")
+    criteria_language = "&primary_language="+input("Language Spoken: \n English=en \n French=fr \n German=de \n Chinese=zh \n Mandarin=cmn \n Hindi=hi \n Greek=el \n Italian=it \n Arabic=ar \n Japanese=ja \n Korean=ko \n Persian=fa \n Panjabi=pj \n Portuguese=pt \n Russian=ru \n Spanish=es \n Swedish=sv \n Turkish=tr \n ")
 else:
     criteria_language=""
     
@@ -36,9 +36,9 @@ if include_release_date.upper() == "Y":
 else:
     criteria_release_date=""
 
-include_country = input("Limit search by Country? (Y/N) \n")
+include_country = input("Limit search by Country of Origin? (Y/N) \n")
 if include_country.upper() == "Y":
-    criteria_country = "&countries="+input("Country of Production: \n United States=us \n United Kingdom=gb \n Australia=au \n Brazil=br \n Canada=ca \n China=cn \n France=fr \n Germany=de \n Greece=gr \n Hong Kong=hk \n India=in \n Iran=ir \n Ireland=ie \n Italy=it \n Japan=jp \n Mexico=mx \n Pakistan=pk \n Russia=ru \n Spain=es \n Sweden=se \n South Africa=za \n South Korea=kr \n Switzerland=th \n")
+    criteria_country = "&country_of_origin="+input("Country of Origin: \n United States=us \n United Kingdom=gb \n Australia=au \n Brazil=br \n Canada=ca \n China=cn \n France=fr \n Germany=de \n Greece=gr \n Hong Kong=hk \n India=in \n Iran=ir \n Ireland=ie \n Italy=it \n Japan=jp \n Mexico=mx \n Pakistan=pk \n Russia=ru \n Spain=es \n Sweden=se \n South Africa=za \n South Korea=kr \n Switzerland=ch \n Thailand=th \n")
 else:
     criteria_country=""
 """
@@ -48,7 +48,7 @@ print(criteria_release_date)
 print(criteria_country)
 """
     
-url = "http://www.imdb.com/search/title?count=250"+criteria_country+criteria_language+criteria_votes+criteria_release_date+"&title_type=feature&view=simple&sort=num_votes,desc&page=1&ref_=adv_nxt"
+url = "http://www.imdb.com/search/title?count=250"+criteria_country+criteria_language+criteria_votes+criteria_release_date+"&title_type=feature&view=simple&sort=user_rating,desc&page=1&ref_=adv_nxt"
 print(url)
 
 response = get(url)
@@ -59,7 +59,7 @@ num_films_text = html_soup.find_all('div', class_ = 'desc')
 if isinstance(num_films_text, int):
     num_films = num_films_text
 elif isinstance(num_films_text, int) == False:
-    num_films=re.search('(\d.+) titles',str(num_films_text[0])).group(1)
+    num_films=re.search('(\d.+|\d+) titles',str(num_films_text[0])).group(1)
     num_films=int(num_films.replace(',', ''))
 print(num_films)
 
@@ -70,12 +70,12 @@ ids = []
 
 start_time = time()
 requests = 0
-
+"""
 # For every page in the interval
 for page in range(1,num_pages+1):
     
     # Make a get request    
-    url = "http://www.imdb.com/search/title?count=250"+criteria_country+criteria_language+criteria_votes+criteria_release_date+"&title_type=feature&view=simple&sort=num_votes,desc&page="+str(page)+"&ref_=adv_nxt"
+    url = "http://www.imdb.com/search/title?count=250"+criteria_country+criteria_language+criteria_votes+criteria_release_date+"&title_type=feature&view=simple&sort=user_rating,desc&page="+str(page)+"&ref_=adv_nxt"
     response = get(url)
     
     # Pause the loop
@@ -116,3 +116,4 @@ ids_df = pd.DataFrame({'col':ids})
 writer = ExcelWriter('/Users/kerrydriscoll/Documents/imdb project/'+criteria_country+criteria_language+criteria_votes+criteria_release_date+'IDs.xlsx')
 ids_df.to_excel(writer)
 writer.save()
+"""
