@@ -70,7 +70,7 @@ ids = []
 
 start_time = time()
 requests = 0
-"""
+
 # For every page in the interval
 for page in range(1,num_pages+1):
     
@@ -111,9 +111,10 @@ for page in range(1,num_pages+1):
 
 print(ids)
 print(len(ids))
+print(len(ids)==num_films)
 
 ids_df = pd.DataFrame({'col':ids})
 writer = ExcelWriter('/Users/kerrydriscoll/Documents/imdb project/'+criteria_country+criteria_language+criteria_votes+criteria_release_date+'IDs.xlsx')
+#writer = ExcelWriter('/Users/kerrydriscoll/Documents/imdb project/25000voteIDs.xlsx')
 ids_df.to_excel(writer)
 writer.save()
-"""

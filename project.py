@@ -17,22 +17,23 @@ pip3 install git+https://github.com/alberanid/imdbpy
 Import Libraries
 """
 
-import time
+from time import time, sleep
+import datetime
 import pandas as pd
 from pandas import ExcelWriter
 import re
-import random
+from random import randint
+from IPython.core.display import clear_output
 import imdb
 import sys
 from imdb import IMDb, IMDbError
 
-#pd.reset_option('all')
 
 
 """
 Measure Runtime to Evaluate Code Performance
 """
-start_time = time.time()
+start_time = time()
 
 """
 connect to IMDb
@@ -77,7 +78,7 @@ CREATE DATAFRAMES to capture relevant info on movies
                 df_initial and the demo_list_sub
 """
 
-df_initial = pd.DataFrame(columns=['ID', 'Title', 'Year', 'Language', 'MPAA', 'Rating', 'Votes'])
+df_initial = pd.DataFrame(columns=['ID', 'Title', 'Year', 'Language', 'MPAA', 'Rating', 'Votes', 'Top 250 Rank'])
 df=pd.DataFrame()
 
 """
@@ -89,6 +90,7 @@ NEED TO SELECT WHICH ONE
             criteria later in the code (foriegn movies, no MPAA, empty demos)
 - option 3: generate random strings of numbers to pull random movies from IMDb
 - option 4: IMDb top 250
+- option 5: all movies eligible to appear in top 250, a.k.a. feature films with over 25,000 votes
 """
 
 i =  IMDb(accessSystem='http')
@@ -98,20 +100,24 @@ movies = []
 #movies = ['0053494','0053494','0757180','4925292', '0780504', '0377092', '0268126', '0128853', '0050212', '0105435', '5013056', '0074119', '0064253', '0061811', '0112697', '0405094', '1255953', '0046268', '0029593']
 """
 for _ in range(5521897):
-    #randID = str(random.randint(0, 7221897)).zfill(7)
+    #randID = str(randint(0, 7221897)).zfill(7)
     randID = str(_).zfill(7)
     movies.append(randID)
 """
 
-for id in i.get_top250_movies():
-    movies.append(i.get_imdbID(id))
+#for id in i.get_top250_movies():
+#    movies.append(i.get_imdbID(id))
+
+movies = pd.read_excel('/Users/kerrydriscoll/Documents/imdb project/25000voteIDs.xlsx')['col'].tolist()
+for item in range(len(movies)):
+    movies[item] = str(movies[item]).zfill(7)
 
 """
 BUILD THE DATAFRAME
 
 1. Gets the movie name
 2. Gets the kind of media associated with the string
-    - could be 'movie', 'tv series', 'video game' etc
+    - could be 'movie', 'tv series', 'video game', 'short', etc
     - will only keep those classified as 'movie'
 3. Determines if the movie is English-language or foriegn
 4. Captures the number of votes have been submitted for this film
@@ -126,20 +132,33 @@ BUILD THE DATAFRAME
 11. Concatenate together the general movie info and demographic-specific info
     into df
 """
+#"""
+loop_time = time()
+requests = 0
 
+#"""
 for m in movies:
     try:
         movie = i.get_movie(m)
     except IMDbError as err:
       print(err)
-      
+    
+    #"""
+    # Monitor the requests
+    requests += 1
+    #sleep(randint(1,3))
+    elapsed_time = time() - loop_time
+    print('Loop is {}% complete='.format(requests/len(movies)))
+    clear_output(wait = True)
+    #"""
+    """  
     if str(movie)=='':
         continue
     
     kind = movie.get('kind')
     if kind != 'movie':
         continue
-    
+    """
     language_search = movie.get('language')
     if language_search == None:
         continue
@@ -147,7 +166,7 @@ for m in movies:
     if language_search[0]=="English":
         language = "English"
     else:
-        language = "Foriegn"
+        language = "Foriegn, " + language_search[0]
     
     votes=movie.get('votes')
     if votes == None:
@@ -158,11 +177,15 @@ for m in movies:
         year=movie.get('year')
         if re.search('USA:(.+?)(:|,|\')',str(movie.get('certification')))!=None:
             mpaa=re.search('USA:(.+?)(:|,|\')',str(movie.get('certification'))).group(1)
+        else:
+            mpaa=None
     
         rating=movie.get('rating')
         
-        df_initial = pd.DataFrame({'ID': [m], 'Title': [str(movie)], 'Year': [year],'Language':[language], 'MPAA': [mpaa], 'Rating':[rating], 'Votes':[votes]})
-        df_initial = df_initial[['ID', 'Title', 'Year', 'Language', 'MPAA', 'Rating', 'Votes']]
+        top250 = movie.get('top 250 rank')
+        
+        df_initial = pd.DataFrame({'ID': [m], 'Title': [str(movie)], 'Year': [year],'Language':[language], 'MPAA': [mpaa], 'Rating':[rating], 'Votes':[votes], 'Top 250 Rank':[top250]})
+        df_initial = df_initial[['ID', 'Title', 'Year', 'Language', 'MPAA', 'Rating', 'Votes', 'Top 250 Rank']]
         
         demographics=i.get_movie(m,'vote details').get('demographics')
         demo_dict={}
@@ -183,8 +206,8 @@ for m in movies:
         df = df.append(df_both, ignore_index=True)
 
 """
-If all the randomly generated numbers failed to select any English language 
-movies with >1,000 votes the code will stop running here
+If all the randomly generated numbers failed to select any movies that meet our
+qualifications the code will stop running here
 """      
 if df.empty==True:
     print("No qualified movies in randomly generated list")
@@ -255,27 +278,27 @@ U.S. Population Statistics
 Percent Composition of the >18 population (249,485,228 people)
 According to U.S. Census Bureau 2016 Population Estimates
 
-DEMO            COUNT           PERCENT
---------------------------------------------
-MALE 18-29      27,450,678      0.110029272	
-MALE 30-44      31,121,027      0.124740961	
-MALE 45+        62,898,003      0.252111131
-FEMALE 18-29    26,284,017      0.105352999	
-FEMALE 30-44    31,135,488      0.124798924
-FEMALE 45+      70,596,015      0.282966713
---------------------------------------------
-TOTAL           249,485,228     1.000000000
+DEMO               COUNT           PERCENT
+----------------------------------------------
+MALE    18-29      27,450,678      0.110029272	
+MALE    30-44      31,121,027      0.124740961	
+MALE    45+        62,898,003      0.252111131
+FEMALE  18-29      26,284,017      0.105352999	
+FEMALE  30-44      31,135,488      0.124798924
+FEMALE  45+        70,596,015      0.282966713
+----------------------------------------------
+TOTAL             249,485,228      1.000000000
 
 
 Using our example for before:
-i.e. if 27.4% of voters over age 18 were males aged 18-29 AND
+i.e. if 27.4% of a movie's voters over age 18 were males aged 18-29
         then weight = 0.4016 = 0.110029272/0.274
         Males age 18-29 are weighted DOWN (0.4016 < 1.0) 
         because they make a SMALLER portion of the Population Base (11.00%) 
         than they do the Voter Base (27.4%)
         
      
-     if 8.2% of voters over age 18 were females aged 30-44
+     if 8.2% of a movie's voters over age 18 were females aged 30-44
          then weight = 1.5219 = 0.124798924/0.082
          Females age 30-44 are weighted UP (1.5219 > 1.0) 
          because they make a LARGER portion of the Population Base (12.48%)
@@ -349,19 +372,14 @@ df['weighted rank']=df['weighted rating'].rank(ascending=0).astype(int)
 df['rank difference'] = df['unweighted rank']-df['weighted rank']
 
 df = df.sort_values(by='rank difference', ascending=False)
-print(df.head(10)[['Title', 'Year', 'Language','Votes','Rating','unweighted rating', 'weighted rating', 'difference', 'unweighted rank', 'weighted rank', 'rank difference']])
-print(df.tail(10)[['Title', 'Year', 'Language', 'Votes','Rating','unweighted rating', 'weighted rating', 'difference', 'unweighted rank', 'weighted rank', 'rank difference']])
+print(df.head(10)[['Title', 'Year', 'Language','Votes','Rating','Top 250 Rank','unweighted rating', 'weighted rating', 'difference', 'unweighted rank', 'weighted rank', 'rank difference']])
+print(df.tail(10)[['Title', 'Year', 'Language', 'Votes','Rating','Top 250 Rank','unweighted rating', 'weighted rating', 'difference', 'unweighted rank', 'weighted rank', 'rank difference']])
 
 df = df.sort_values(by='weighted rank', ascending=True)
-print(df[['Title', 'Year','Language', 'Votes','Rating','unweighted rating', 'weighted rating', 'difference', 'unweighted rank', 'weighted rank', 'rank difference']])
+print(df[['Title', 'Year','Language', 'Votes','Rating','Top 250 Rank', 'unweighted rating', 'weighted rating', 'difference', 'unweighted rank', 'weighted rank', 'rank difference']])
 
-pd.set_option('display.max_rows', 250)
-pd.set_option('display.width', 1000)
-print(df[['Title', 'unweighted rank', 'weighted rank', 'rank difference']])
 
-pd.reset_option('all')
-
-writer = ExcelWriter('/Users/kerrydriscoll/Documents/imdb project/NewIMDb.xlsx')
+writer = ExcelWriter('/Users/kerrydriscoll/Documents/imdb project/NewIMDb_{}.xlsx'.format(datetime.datetime.now().strftime("%m-%d_%H:%M")))
 df.to_excel(writer)
 writer.save()
 
