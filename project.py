@@ -20,10 +20,11 @@ Import Libraries
 from time import time, sleep
 import datetime
 import pandas as pd
+import numpy as np
 from pandas import ExcelWriter
 import re
 from random import randint
-from IPython.core.display import clear_output
+from IPython.display import clear_output
 import imdb
 import sys
 from imdb import IMDb, IMDbError
@@ -94,10 +95,12 @@ NEED TO SELECT WHICH ONE
 """
 
 i =  IMDb(accessSystem='http')
-#"""
+##"""
 movies = []
 #movies = ['0780504']
 #movies = ['0053494','0053494','0757180','4925292', '0780504', '0377092', '0268126', '0128853', '0050212', '0105435', '5013056', '0074119', '0064253', '0061811', '0112697', '0405094', '1255953', '0046268', '0029593']
+#A24 Titles only
+#movies=pd.read_excel('/Users/kerrydriscoll/Desktop/resumes/A24/A24 IDs.xlsx')['IMDb'].tolist()
 """
 for _ in range(5521897):
     #randID = str(randint(0, 7221897)).zfill(7)
@@ -105,13 +108,13 @@ for _ in range(5521897):
     movies.append(randID)
 """
 
-#for id in i.get_top250_movies():
-#    movies.append(i.get_imdbID(id))
-
+for id in i.get_top250_movies():
+    movies.append(i.get_imdbID(id))
+"""
 movies = pd.read_excel('/Users/kerrydriscoll/Documents/imdb project/25000voteIDs.xlsx')['col'].tolist()
 for item in range(len(movies)):
     movies[item] = str(movies[item]).zfill(7)
-
+"""
 """
 BUILD THE DATAFRAME
 
@@ -133,7 +136,7 @@ BUILD THE DATAFRAME
     into df
 """
 #"""
-loop_time = time()
+#loop_time = time()
 requests = 0
 
 #"""
@@ -145,11 +148,11 @@ for m in movies:
     
     #"""
     # Monitor the requests
-    requests += 1
+   # requests += 1
     #sleep(randint(1,3))
-    elapsed_time = time() - loop_time
-    print('Loop is {}% complete='.format(requests/len(movies)))
-    clear_output(wait = True)
+    #elapsed_time = time() - loop_time
+   # print('Request {}: Loop is {}% complete'.format(requests, (requests/len(movies))*100)
+    #clear_output(wait = False)
     #"""
     """  
     if str(movie)=='':
@@ -306,12 +309,14 @@ i.e. if 27.4% of a movie's voters over age 18 were males aged 18-29
 
 """
 
-df['weight_males aged 18 29']       = 0.110029272/ df['percent_males aged 18 29_votes']
-df['weight_males aged 30 44']       = 0.124740961/ df['percent_males aged 30 44_votes']
-df['weight_males aged 45 plus']     = 0.252111131/ df['percent_males aged 45 plus_votes']
-df['weight_females aged 18 29']     = 0.105352999/ df['percent_females aged 18 29_votes']
-df['weight_females aged 30 44']     = 0.124798924/ df['percent_females aged 30 44_votes']
-df['weight_females aged 45 plus']   = 0.282966713/ df['percent_females aged 45 plus_votes']
+df['weight_males aged 18 29']       = 0.110029272/ df['percent_males aged 18 29_votes'].replace({ 0 : np.nan })
+df['weight_males aged 30 44']       = 0.124740961/ df['percent_males aged 30 44_votes'].replace({ 0 : np.nan })
+df['weight_males aged 45 plus']     = 0.252111131/ df['percent_males aged 45 plus_votes'].replace({ 0 : np.nan })
+df['weight_females aged 18 29']     = 0.105352999/ df['percent_females aged 18 29_votes'].replace({ 0 : np.nan })
+df['weight_females aged 30 44']     = 0.124798924/ df['percent_females aged 30 44_votes'].replace({ 0 : np.nan })
+df['weight_females aged 45 plus']   = 0.282966713/ df['percent_females aged 45 plus_votes'].replace({ 0 : np.nan })
+
+weight_cols = [col for col in df.columns if 'weight_' in col]
 
 
 """
@@ -379,14 +384,14 @@ df = df.sort_values(by='weighted rank', ascending=True)
 print(df[['Title', 'Year','Language', 'Votes','Rating','Top 250 Rank', 'unweighted rating', 'weighted rating', 'difference', 'unweighted rank', 'weighted rank', 'rank difference']])
 
 
-writer = ExcelWriter('/Users/kerrydriscoll/Documents/imdb project/NewIMDb_{}.xlsx'.format(datetime.datetime.now().strftime("%m-%d_%H:%M")))
+writer = ExcelWriter('/Users/kerrydriscoll/Documents/imdb project/Reweighted250_{}.xlsx'.format(datetime.datetime.now().strftime("%m-%d_%H-%M")))
 df.to_excel(writer)
 writer.save()
 
 """
 Measure Runtime to Evaluate Code Performance
 """
-run_time=time.time() - start_time
+run_time=time() - start_time
 print("--- {} seconds ---".format(run_time))
 print("--- {} seconds per movie ---".format(run_time/len(movies)))
     
