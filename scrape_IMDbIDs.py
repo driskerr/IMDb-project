@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 import re
 import math
 from time import time, sleep
+import datetime
 from random import randint
 from IPython.core.display import clear_output
 from warnings import warn
@@ -20,7 +21,7 @@ from warnings import warn
 
 include_votes = input("Limit search by Number of Votes? (Y/N) \n")
 if include_votes.upper() == "Y":
-    criteria_votes = "&num_votes="+input("Minimum number of votes: \n")+","
+    criteria_votes = "&num_votes="+input("Minimum number of votes: \n")#+","
 else:
     criteria_votes=""
     
@@ -48,7 +49,7 @@ print(criteria_release_date)
 print(criteria_country)
 """
     
-url = "http://www.imdb.com/search/title?count=250"+criteria_country+criteria_language+criteria_votes+criteria_release_date+"&title_type=feature&view=simple&sort=user_rating,desc&page=1&ref_=adv_nxt"
+url = "http://www.imdb.com/search/title?count=250"+criteria_country+criteria_language+criteria_votes+criteria_release_date+"&title_type=feature&view=simple&sort=user_rating,desc&start=1&ref_=adv_nxt"
 print(url)
 
 response = get(url)
@@ -59,23 +60,24 @@ num_films_text = html_soup.find_all('div', class_ = 'desc')
 if isinstance(num_films_text, int):
     num_films = num_films_text
 elif isinstance(num_films_text, int) == False:
-    num_films=re.search('(\d.+|\d+) titles',str(num_films_text[0])).group(1)
+    num_films=re.search('([\d][\d,.]+) title', str(num_films_text)).group(1)
     num_films=int(num_films.replace(',', ''))
 print(num_films)
 
 num_pages = math.ceil(num_films/250)
 print(num_pages)
-
+"""
 ids = []
 
 start_time = time()
 requests = 0
 
+
 # For every page in the interval
-for page in range(1,num_pages+1):
+for page in range(num_pages):
     
     # Make a get request    
-    url = "http://www.imdb.com/search/title?count=250"+criteria_country+criteria_language+criteria_votes+criteria_release_date+"&title_type=feature&view=simple&sort=user_rating,desc&page="+str(page)+"&ref_=adv_nxt"
+    url = "http://www.imdb.com/search/title?count=250"+criteria_country+criteria_language+criteria_votes+criteria_release_date+"&title_type=feature&view=simple&sort=user_rating,desc&start="+str(250*page+1)+"&ref_=adv_nxt"
     response = get(url)
     
     # Pause the loop
@@ -114,7 +116,8 @@ print(len(ids))
 print(len(ids)==num_films)
 
 ids_df = pd.DataFrame({'col':ids})
-writer = ExcelWriter('/Users/kerrydriscoll/Documents/imdb project/'+criteria_country+criteria_language+criteria_votes+criteria_release_date+'IDs.xlsx')
-#writer = ExcelWriter('/Users/kerrydriscoll/Documents/imdb project/25000voteIDs.xlsx')
+#writer = ExcelWriter('/Users/kerrydriscoll/Documents/imdb project/'+criteria_country+criteria_language+criteria_votes+criteria_release_date+'IDs.xlsx')
+writer = ExcelWriter('/Users/kerrydriscoll/Documents/imdb project/25000voteIDs_{}.xlsx'.format(datetime.datetime.now().strftime("%m-%d")))
 ids_df.to_excel(writer)
 writer.save()
+"""

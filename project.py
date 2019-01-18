@@ -25,11 +25,11 @@ from pandas import ExcelWriter
 import re
 from random import randint
 from IPython.display import clear_output
-import imdb
 import sys
 from imdb import IMDb, IMDbError
+from ipfn import ipfn
 
-
+pd.set_option('display.max_columns', 20)
 
 """
 Measure Runtime to Evaluate Code Performance
@@ -61,15 +61,102 @@ demo_list_sub=[]
 demos=i.get_movie('0780504','vote details').get('demographics')
 for d in demos:
     demo_list.append(d)
-demo_list.remove('imdb staff')
+#demo_list.remove('imdb staff')
 demo_list.remove('top 1000 voters')
 demo_list.remove('imdb users')
-demo_list = sorted(demo_list)
-myorder = [9, 4, 3, 0, 1, 2, 15, 14, 13, 10, 11, 12, 8, 5, 6, 7]
-demo_list = [demo_list[i] for i in myorder]
+demo_list.remove('us users')
+demo_list.remove('non us users')
+demo_list.remove('males aged under 18')
+demo_list.remove('females aged under 18')
+demo_list.remove('aged under 18')
 for d in demo_list:
     demo_list_sub.append(str(d)+'_rating')
     demo_list_sub.append(str(d)+'_votes')
+    
+"""
+IDENTIFIES VOTE DETAILS for IMDb users who
+ - identified their gender (male, female)
+ - identified their age (under 18, 18-29, 30-44, 45+)
+ - are over age 18 (excludes under 18) ... this is because there is inconsistent
+   representation over the under-18 category on the site and because they cannot
+   see R-rated movies
+"""
+
+demo_votes_cols = [col for col in demo_list_sub if '_votes' in col]
+
+"""
+CREATE WEIGHTS for each Demographic Category to reflect the actual composition
+of the United States
+
+
+U.S. Population Statistics
+
+Percent Composition of the >18 population (247,403,128 people)
+According to U.S. Census Bureau 2017 Population Estimates
+
+-"AGE AND SEX  more information 2013-2017 American Community Survey 5-Year Estimates"
+-https://factfinder.census.gov/faces/tableservices/jsf/pages/productview.xhtml?src=CF
+
+
+DEMO               COUNT           PERCENT
+--------------------------------------------
+MALE          120,408,314        0.486688729  	
+FEMALE        126,994,814        0.513311271  	
+--------------------------------------------
+TOTAL         247,403,128        1.000000000
+
+
+DEMO            COUNT           PERCENT
+----------------------------------------------
+ 18-29      53,538,402        0.216401476  	
+ 30-44      62,293,674        0.251790163  	
+ 45+       131,571,052        0.531808361  
+----------------------------------------------
+TOTAL      247,403,128        1.000000000
+
+
+
+DEMO               COUNT           PERCENT
+----------------------------------------------
+MALE    18-29      27,346,977       0.110536100 	
+MALE    30-44      31,121,285       0.125791801 	
+MALE    45+        62,898,003       0.250360828 
+FEMALE  18-29      26,191,425       0.105865375 	
+FEMALE  30-44      31,172,389       0.125998362 
+FEMALE  45+        69,631,000       0.281447533 
+----------------------------------------------
+TOTAL             247,403,128       1.000000000
+
+
+Using our example for before:
+i.e. if 27.4% of a movie's voters over age 18 were males aged 18-29
+        then weight = 0.403 = 0.110536100/0.274
+        Males age 18-29 are weighted DOWN (0.403 < 1.0) 
+        because they make a SMALLER portion of the Population Base (11.05%) 
+        than they do the Voter Base (27.4%)
+        
+     
+     if 8.2% of a movie's voters over age 18 were females aged 30-44
+         then weight = 1.5366 = 0.125998362/0.082
+         Females age 30-44 are weighted UP (1.5366 > 1.0) 
+         because they make a LARGER portion of the Population Base (12.60%)
+         than they do the Voter Base (8.2%)
+
+"""
+
+us_targets = pd.read_csv(r'/Users/kerrydriscoll/Documents/imdb project/ACS_demos.csv')
+age_target = us_targets.groupby('age')['percent'].sum()
+gender_target = us_targets.groupby('gender')['percent'].sum()
+
+gender_dict = {'males': 0, 'females': 1}
+age_dict = {'18 29': 1, '30 44': 2, '45 plus': 3}
+
+age_target.index = age_target.index.map(age_dict)
+gender_target.index = gender_target.index.map(gender_dict)
+us_targets['gender'] = us_targets['gender'].map(gender_dict)
+us_targets['age'] = us_targets['age'].map(age_dict)
+us_targets.rename(columns = {'percent': 'percent_census'}, inplace=True)
+
 
 """
 CREATE DATAFRAMES to capture relevant info on movies
@@ -79,7 +166,7 @@ CREATE DATAFRAMES to capture relevant info on movies
                 df_initial and the demo_list_sub
 """
 
-df_initial = pd.DataFrame(columns=['ID', 'Title', 'Year', 'Language', 'MPAA', 'Rating', 'Votes', 'Top 250 Rank'])
+df_initial = pd.DataFrame(columns=['ID', 'Title', 'Year', 'Language', 'Genre', 'MPAA', 'Rating', 'Votes', 'Top 250 Rank'])
 df=pd.DataFrame()
 
 """
@@ -107,14 +194,15 @@ for _ in range(5521897):
     randID = str(_).zfill(7)
     movies.append(randID)
 """
-
+"""
 for id in i.get_top250_movies():
     movies.append(i.get_imdbID(id))
-"""
-movies = pd.read_excel('/Users/kerrydriscoll/Documents/imdb project/25000voteIDs.xlsx')['col'].tolist()
+"""    
+#"""
+movies = pd.read_excel('/Users/kerrydriscoll/Documents/imdb project/25000voteIDs_{}.xlsx'.format(datetime.datetime.now().strftime("%m-%d")))['col'].tolist()
 for item in range(len(movies)):
     movies[item] = str(movies[item]).zfill(7)
-"""
+#"""
 """
 BUILD THE DATAFRAME
 
@@ -144,7 +232,7 @@ for m in movies:
     try:
         movie = i.get_movie(m)
     except IMDbError as err:
-      print(err)
+        print(err)
     
     #"""
     # Monitor the requests
@@ -175,11 +263,17 @@ for m in movies:
     if votes == None:
         continue
     
+    genre=movie.get('genre')
+    if genre == None:
+        continue
+    
+    
     #if (language == "English") and (votes>=1000):
     if votes>=25000:
         year=movie.get('year')
-        if re.search('USA:(.+?)(:|,|\')',str(movie.get('certification')))!=None:
-            mpaa=re.search('USA:(.+?)(:|,|\')',str(movie.get('certification'))).group(1)
+        if re.search('United States:(.+?)(:|,|\')',str(movie.get('certification')))!=None:
+            #mpaa=re.search('United States:(.+?)(:|,|\')',str(movie.get('certification'))).group(1)
+            mpaa=[ratings[0] for ratings in re.findall('United States:(.+?)(:|,|\')',str(movie.get('certification'))) if 'TV' not in ratings[0]]
         else:
             mpaa=None
     
@@ -187,26 +281,51 @@ for m in movies:
         
         top250 = movie.get('top 250 rank')
         
-        df_initial = pd.DataFrame({'ID': [m], 'Title': [str(movie)], 'Year': [year],'Language':[language], 'MPAA': [mpaa], 'Rating':[rating], 'Votes':[votes], 'Top 250 Rank':[top250]})
-        df_initial = df_initial[['ID', 'Title', 'Year', 'Language', 'MPAA', 'Rating', 'Votes', 'Top 250 Rank']]
+        df_initial = pd.DataFrame({'ID': [m], 'Title': [str(movie)], 'Year': [year],'Language':[language], 'Genre': [", ".join(genre) if genre is not None else genre], 'MPAA': [", ".join(mpaa) if mpaa is not None else mpaa], 'Rating':[rating], 'Votes':[votes], 'Top 250 Rank':[top250]})
+        df_initial = df_initial[['ID', 'Title', 'Year', 'Language','Genre','MPAA', 'Rating', 'Votes', 'Top 250 Rank']]
         
         demographics=i.get_movie(m,'vote details').get('demographics')
+        demo_clean = pd.DataFrame(demographics)[demo_list]
+        
         demo_dict={}
         for d in demo_list:
             if d in demographics:
-                demo_dict[str(d)+'_rating'] = demographics[d]['rating']
-                demo_dict[str(d)+'_votes']= demographics[d]['votes']
+                demo_dict[str(d)+'_rating'] = demo_clean[d]['rating']
+                demo_dict[str(d)+'_votes']= demo_clean[d]['votes']
             elif d not in demographics:
                 demo_dict[str(d)+'_rating'] = None
                 demo_dict[str(d)+'_votes']= 0
+                
+        demo_df=pd.DataFrame.from_dict(demo_dict, orient='index').T
         
-        demo_df=pd.DataFrame.from_dict(demo_dict, orient='index')
-        demo_df=demo_df.T
-        demo_df=demo_df[demo_list_sub]        
-            
-        df_both = pd.concat([df_initial, demo_df], axis=1)
+        demo_clean = demo_clean.T
+        demo_clean.reset_index(inplace=True)
         
-        df = df.append(df_both, ignore_index=True)
+        demo_clean['gender'] = demo_clean['index'].apply(lambda x: x.split('aged')[0].strip())
+        demo_clean['age'] = demo_clean['index'].apply(lambda x: x.split('aged')[1].strip() if len(x.split('aged')) > 1 else '')
+        
+        demo_clean = demo_clean[['gender', 'age', 'rating', 'votes']]
+        demo_clean = demo_clean[(demo_clean['gender']!='') & (demo_clean['age']!='')].reset_index(drop=True)
+        demo_clean['percent_original'] = demo_clean['votes'].apply(lambda x: x/demo_clean['votes'].sum())
+        demo_clean['percent_infp'] = demo_clean['percent_original']
+        
+        demo_clean['age'] = demo_clean['age'].map(age_dict)
+        demo_clean['gender'] = demo_clean['gender'].map(gender_dict)
+        demo_clean = pd.merge(demo_clean, us_targets[['gender', 'age', 'percent_census']], on = ['gender', 'age'])
+        
+        ipfn_df = ipfn.ipfn(demo_clean, [age_target, gender_target], [['age'], ['gender']], weight_col = 'percent_infp')
+        demo_final = ipfn_df.iteration()
+        
+        rating_unweighted = demo_final['rating'].dot(demo_final['percent_original'])
+        rating_infp = demo_final['rating'].dot(demo_final['percent_infp'])
+        rating_census = demo_final['rating'].dot(demo_final['percent_census'])
+        
+        ratings_df = pd.DataFrame({'unweighted_rating': [rating_unweighted], 'weighted_infp_rating': [rating_infp], 'weighted_census_rating': [rating_census],})
+        
+        df_all = pd.concat([df_initial, demo_df, ratings_df], axis=1)
+        
+        df = df.append(df_all, ignore_index=True)
+        
 
 """
 If all the randomly generated numbers failed to select any movies that meet our
@@ -233,113 +352,6 @@ votes_cols = [col for col in df.columns if '_votes' in col]
 df[votes_cols]=df[votes_cols].astype(int)
 df = df.sort_values(by=['Rating'], ascending=False)
 
-"""
-IDENTIFIES VOTE DETAILS for IMDb users who
- - identified their gender (male, female)
- - identified their age (under 18, 18-29, 30-44, 45+)
- - are over age 18 (excludes under 18) ... this is because there is inconsistent
-   representation over the under-18 category on the site and because they cannot
-   see R-rated movies
-"""
-
-demo_votes_cols = ['males aged 18 29_votes', 'males aged 30 44_votes','males aged 45 plus_votes', 'females aged 18 29_votes','females aged 30 44_votes', 'females aged 45 plus_votes']
-
-"""
-CALCULATE BASE
-
-Sum of the IMDb users listed above:
-[ - identified their gender (male, female)
- - identified their age (under 18, 18-29, 30-44, 45+)
- - are over age 18 (excludes under 18) ... this is because there is inconsistent
-   representation over the under-18 category on the site and because the cannot
-   see R-rated movies]
-who voted on the film
-"""
-df['known total votes >18'] = df[demo_votes_cols].sum(axis=1)
-df['Perc Votes studied']=df['known total votes >18']/df['Votes']
-df['Perc Votes U.S.']=df['us users_votes']/(df['us users_votes']+df['non us users_votes'])
-
-"""
-CALCULATE DEMPGRAHIC COMPOSITION
-
-Generates % of total IMDb votes belong to each demographic category
-
-i.e. 27.4% of voters over age 18 were males aged 18-29
-      8.2% of voters over age 18 were females aged 30-44
-      ...
-"""
-for d in demo_votes_cols:
-    df['percent_'+str(d)] = df[d]/df['known total votes >18']
-    
-"""
-CREATE WEIGHTS for each Demographic Category to reflect the actual composition
-of the United States
-
-
-U.S. Population Statistics
-
-Percent Composition of the >18 population (249,485,228 people)
-According to U.S. Census Bureau 2016 Population Estimates
-
-DEMO               COUNT           PERCENT
-----------------------------------------------
-MALE    18-29      27,450,678      0.110029272	
-MALE    30-44      31,121,027      0.124740961	
-MALE    45+        62,898,003      0.252111131
-FEMALE  18-29      26,284,017      0.105352999	
-FEMALE  30-44      31,135,488      0.124798924
-FEMALE  45+        70,596,015      0.282966713
-----------------------------------------------
-TOTAL             249,485,228      1.000000000
-
-
-Using our example for before:
-i.e. if 27.4% of a movie's voters over age 18 were males aged 18-29
-        then weight = 0.4016 = 0.110029272/0.274
-        Males age 18-29 are weighted DOWN (0.4016 < 1.0) 
-        because they make a SMALLER portion of the Population Base (11.00%) 
-        than they do the Voter Base (27.4%)
-        
-     
-     if 8.2% of a movie's voters over age 18 were females aged 30-44
-         then weight = 1.5219 = 0.124798924/0.082
-         Females age 30-44 are weighted UP (1.5219 > 1.0) 
-         because they make a LARGER portion of the Population Base (12.48%)
-         than they do the Voter Base (8.2%)
-
-"""
-
-df['weight_males aged 18 29']       = 0.110029272/ df['percent_males aged 18 29_votes'].replace({ 0 : np.nan })
-df['weight_males aged 30 44']       = 0.124740961/ df['percent_males aged 30 44_votes'].replace({ 0 : np.nan })
-df['weight_males aged 45 plus']     = 0.252111131/ df['percent_males aged 45 plus_votes'].replace({ 0 : np.nan })
-df['weight_females aged 18 29']     = 0.105352999/ df['percent_females aged 18 29_votes'].replace({ 0 : np.nan })
-df['weight_females aged 30 44']     = 0.124798924/ df['percent_females aged 30 44_votes'].replace({ 0 : np.nan })
-df['weight_females aged 45 plus']   = 0.282966713/ df['percent_females aged 45 plus_votes'].replace({ 0 : np.nan })
-
-weight_cols = [col for col in df.columns if 'weight_' in col]
-
-
-"""
-CALCULATE UNWEIGHTED RATING
-
-Necessary because:
-- the publicly displayed rating on the movie's main page (df['Rating']) is too 
-  general (only has one decimal place)
-- the publicly displayed rating takes into account all votes, even those that
-  did not identify their age or gender or those under age 18 - since we limited
-  our study to voters with these characteristics, our comparison must be limited
-  to restricted to voters with these characteristics
-"""
-df['unweighted rating'] = (df['males aged 18 29_rating']*df['percent_males aged 18 29_votes']) + (df['males aged 30 44_rating']*df['percent_males aged 30 44_votes']) + (df['males aged 45 plus_rating']*df['percent_males aged 45 plus_votes']) + (df['females aged 18 29_rating']*df['percent_females aged 18 29_votes']) + (df['females aged 30 44_rating']*df['percent_females aged 30 44_votes']) + (df['females aged 45 plus_rating']*df['percent_females aged 45 plus_votes'])
-
-
-"""
-CALCULATE WEIGHTED RATING
-
-Apply the weights to the rating of each demographic group to get the new 'unbiased' score
-"""
-df['weighted rating'] = (df['males aged 18 29_rating']*df['weight_males aged 18 29']*df['percent_males aged 18 29_votes']) + (df['males aged 30 44_rating']*df['weight_males aged 30 44']*df['percent_males aged 30 44_votes']) + (df['males aged 45 plus_rating']*df['weight_males aged 45 plus']*df['percent_males aged 45 plus_votes']) + (df['females aged 18 29_rating']*df['weight_females aged 18 29']*df['percent_females aged 18 29_votes']) + (df['females aged 30 44_rating']*df['weight_females aged 30 44']*df['percent_females aged 30 44_votes']) + (df['females aged 45 plus_rating']*df['weight_females aged 45 plus']*df['percent_females aged 45 plus_votes'])
-
 
 """
 MEASURE THE DIFFERENCE 
@@ -354,8 +366,9 @@ Difference > 0.0  POS   Film is MORE liked than IMDb suggests
 Difference < 0.0  NEG   Film is LESS liked than IMDb suggests
 
 """
-df['difference'] = df['weighted rating']-df['unweighted rating']
-df = df.sort_values(by='difference', ascending=False)
+df['difference_infp'] = df['weighted_infp_rating']-df['unweighted_rating']
+df['difference_census'] = df['weighted_census_rating']-df['unweighted_rating']
+df = df.sort_values(by='difference_census', ascending=False)
 
 #df['abs_difference']= abs(df['difference'])
 #df = df.sort_values(by='abs_difference', ascending=False)
@@ -364,7 +377,7 @@ df = df.sort_values(by='difference', ascending=False)
 Print the essential info from the dataframe
 """
 
-print(df[['Title', 'Year', 'Language','Votes', 'Rating','unweighted rating', 'weighted rating', 'difference']])
+print(df[['Title', 'Year', 'Language','Votes', 'Rating','unweighted_rating', 'weighted_infp_rating','weighted_census_rating', 'difference_infp', 'difference_census']])
 
 """
 MEASURE DIFFERENCE IN RANK
@@ -372,19 +385,22 @@ MEASURE DIFFERENCE IN RANK
 See how the reweighting affects the order of scores (particularly for the top 250)
 """
 
-df['unweighted rank']=df['unweighted rating'].rank(ascending=0).astype(int)
-df['weighted rank']=df['weighted rating'].rank(ascending=0).astype(int)
-df['rank difference'] = df['unweighted rank']-df['weighted rank']
+df['rank_unweighted']=df['unweighted_rating'].rank(ascending=0).astype(int)
+df['rank_infp']=df['weighted_infp_rating'].rank(ascending=0).astype(int)
+df['rank_census']=df['weighted_census_rating'].rank(ascending=0).astype(int)
+df['rank_difference_infp'] = df['rank_unweighted']-df['rank_infp']
+df['rank_difference_census'] = df['rank_unweighted']-df['rank_census']
 
-df = df.sort_values(by='rank difference', ascending=False)
-print(df.head(10)[['Title', 'Year', 'Language','Votes','Rating','Top 250 Rank','unweighted rating', 'weighted rating', 'difference', 'unweighted rank', 'weighted rank', 'rank difference']])
-print(df.tail(10)[['Title', 'Year', 'Language', 'Votes','Rating','Top 250 Rank','unweighted rating', 'weighted rating', 'difference', 'unweighted rank', 'weighted rank', 'rank difference']])
+df = df.sort_values(by='rank_difference_census', ascending=False)
+print(df.head(10)[['Title', 'Year', 'Language','Votes', 'Rating','unweighted_rating', 'weighted_infp_rating','weighted_census_rating', 'difference_infp', 'difference_census', 'rank_unweighted', 'rank_infp', 'rank_census', 'rank_difference_infp', 'rank_difference_census']])
+print(df.tail(10)[['Title', 'Year', 'Language','Votes', 'Rating','unweighted_rating', 'weighted_infp_rating','weighted_census_rating', 'difference_infp', 'difference_census', 'rank_unweighted', 'rank_infp', 'rank_census', 'rank_difference_infp', 'rank_difference_census']])
 
-df = df.sort_values(by='weighted rank', ascending=True)
-print(df[['Title', 'Year','Language', 'Votes','Rating','Top 250 Rank', 'unweighted rating', 'weighted rating', 'difference', 'unweighted rank', 'weighted rank', 'rank difference']])
+df = df.sort_values(by='rank_difference_census', ascending=True)
+print(df[['Title', 'Year', 'Language','Votes', 'Rating','unweighted_rating', 'weighted_infp_rating','weighted_census_rating', 'difference_infp', 'difference_census', 'rank_unweighted', 'rank_infp', 'rank_census', 'rank_difference_infp', 'rank_difference_census']])
 
 
-writer = ExcelWriter('/Users/kerrydriscoll/Documents/imdb project/Reweighted250_{}.xlsx'.format(datetime.datetime.now().strftime("%m-%d_%H-%M")))
+#writer = ExcelWriter('/Users/kerrydriscoll/Documents/imdb project/Reweighted250_{}.xlsx'.format(datetime.datetime.now().strftime("%m-%d_%H-%M")))
+writer = ExcelWriter('/Users/kerrydriscoll/Documents/imdb project/Reweighted_Possible250_{}.xlsx'.format(datetime.datetime.now().strftime("%m-%d_%H-%M")))
 df.to_excel(writer)
 writer.save()
 
