@@ -5,7 +5,7 @@ This is my attempt to reweigh IMDb movie scores by its demographic breakdown. Fi
 I am making this up as I go along. My tentative game-plan is as follows:
 1. Scrape Demographic Score Data from IMDb 
   - may limit to films with over 1,000 user ratings (the same standard [Walt Hickey used in his TV show analysis](https://fivethirtyeight.com/features/men-are-sabotaging-the-online-reviews-of-tv-shows-aimed-at-women/))
-  - may limit to >18 population, due to small IMDb user data in the under 18 population
+  - may limit to >18 population, due to small IMDb user data in the under 18 population, and concerns with age restrictions on R rated movies
   - uncertain if I am going to use IMDb's "arithmetic mean" or "weighted average" - IMDb weighs scores rather than relying on raw data to "eliminate and reduce attempts at vote stuffing by people more interested in changing the current rating of a movie than giving their true opinion of it."
 2. Reweigh to match the 2017 Population Estimates released by the U.S. Census Bureau
 3. See if there is a difference between "original" and weighted movie ratings
