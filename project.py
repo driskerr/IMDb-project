@@ -9,9 +9,10 @@ Created on Mon Nov 13 14:32:04 2017
 Step 1:
 Install IMDBPy with the following code in terminal
 (to ensure you have the most current version):
+"""
+#!pip install git+https://github.com/alberanid/imdbpy
 
-pip3 install git+https://github.com/alberanid/imdbpy
-
+"""
 """
 """
 Import Libraries
@@ -94,38 +95,38 @@ U.S. Population Statistics
 Percent Composition of the >18 population (247,403,128 people)
 According to U.S. Census Bureau 2017 Population Estimates
 
--"AGE AND SEX  more information 2013-2017 American Community Survey 5-Year Estimates"
--https://factfinder.census.gov/faces/tableservices/jsf/pages/productview.xhtml?src=CF
+-"AGE AND SEX  more information 2013-2017 American Community Survey 1-Year Estimates"
+-https://factfinder.census.gov/bkmk/table/1.0/en/ACS/17_1YR/S0101
 
 
 DEMO               COUNT           PERCENT
 --------------------------------------------
-MALE          120,408,314        0.486688729  	
-FEMALE        126,994,814        0.513311271  	
+MALE          122,729,360        0.486885068   	
+FEMALE        129,341,135        0.513114932   	
 --------------------------------------------
-TOTAL         247,403,128        1.000000000
+TOTAL         252,070,495        1.000000000
 
 
 DEMO            COUNT           PERCENT
 ----------------------------------------------
- 18-29      53,538,402        0.216401476  	
- 30-44      62,293,674        0.251790163  	
- 45+       131,571,052        0.531808361  
+ 18-29      53,906,201         0.213853672   	
+ 30-44      62,997,851         0.249921559   	
+ 45+       135,166,443         0.536224769   
 ----------------------------------------------
-TOTAL      247,403,128        1.000000000
+TOTAL      252,070,495        1.000000000
 
 
 
 DEMO               COUNT           PERCENT
 ----------------------------------------------
-MALE    18-29      27,346,977       0.110536100 	
-MALE    30-44      31,121,285       0.125791801 	
-MALE    45+        62,898,003       0.250360828 
-FEMALE  18-29      26,191,425       0.105865375 	
-FEMALE  30-44      31,172,389       0.125998362 
-FEMALE  45+        69,631,000       0.281447533 
+MALE    18-29      27,548,361        0.109288320  	
+MALE    30-44      31,495,256        0.124946222  	
+MALE    45+        63,685,743        0.252650525  
+FEMALE  18-29      26,357,840        0.104565352  	
+FEMALE  30-44      31,502,595        0.124975337  
+FEMALE  45+        71,480,700        0.283574244  
 ----------------------------------------------
-TOTAL             247,403,128       1.000000000
+TOTAL             252,070,495       1.000000000
 
 
 Using our example for before:
@@ -185,6 +186,7 @@ i =  IMDb(accessSystem='http')
 ##"""
 movies = []
 #movies = ['0780504']
+#movies = ['4154664'] #Captain Marvel
 #movies = ['0053494','0053494','0757180','4925292', '0780504', '0377092', '0268126', '0128853', '0050212', '0105435', '5013056', '0074119', '0064253', '0061811', '0112697', '0405094', '1255953', '0046268', '0029593']
 #A24 Titles only
 #movies=pd.read_excel('/Users/kerrydriscoll/Desktop/resumes/A24/A24 IDs.xlsx')['IMDb'].tolist()
@@ -351,6 +353,9 @@ df['Votes']=df['Votes'].astype(int)
 votes_cols = [col for col in df.columns if '_votes' in col]
 df[votes_cols]=df[votes_cols].astype(int)
 df = df.sort_values(by=['Rating'], ascending=False)
+# Remove Two Films whose ratings, IMDb does not consider valide
+# 'The Chaos Class' and 'The Mountain II'
+df = df[(df['ID']!='0252487') & (df['ID']!='5813916')]
 
 
 """

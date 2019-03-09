@@ -66,7 +66,7 @@ print(num_films)
 
 num_pages = math.ceil(num_films/250)
 print(num_pages)
-"""
+#"""
 ids = []
 
 start_time = time()
@@ -120,4 +120,4 @@ ids_df = pd.DataFrame({'col':ids})
 writer = ExcelWriter('/Users/kerrydriscoll/Documents/imdb project/25000voteIDs_{}.xlsx'.format(datetime.datetime.now().strftime("%m-%d")))
 ids_df.to_excel(writer)
 writer.save()
-"""
+#"""
